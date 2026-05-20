@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>Calculator</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <script src="calculator.js" defer></script>
+</head>
+
+<body>
+  <main style="text-align: center; max-width: 800px; margin-inline: auto;">
+    <h1>Simple Calculator</h1>
+
+    <form onsubmit="return false;">
+      <label for="num1">First Number:</label>
+      <input type="number" id="num1" step="any" placeholder="0">
+
+      <label for="num2">Second Number:</label>
+      <input type="number" id="num2" step="any" placeholder="0">
+
+      <div style="display: flex; gap: 1rem; margin-block: 1rem;">
+        <button id="btn-add" style="flex:1">&plus;</button>
+        <button id="btn-subtract" style="flex:1">&minus;</button>
+        <button id="btn-multiply" style="flex:1">&times;</button>
+        <button id="btn-divide" style="flex:1">&divide;</button>
+      </div>
+    </form>
+
+    <section>
+      <h2>Result</h2>
+      <p style="font-size: 2rem; font-weight: bold;" id="result">&ndash;</p>
+    </section>
+  </main>
+</body>
+
+</html>
