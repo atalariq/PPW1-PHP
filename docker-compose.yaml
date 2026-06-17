@@ -2,7 +2,7 @@ services:
   app:
     build: .
     ports:
-      - "8080:80"
+      - "8082:80"
     volumes:
       - ./src:/var/www/html
     depends_on:
@@ -10,25 +10,37 @@ services:
         condition: service_healthy
     environment:
       DB_HOST: db
-      DB_PORT: 5432
+      DB_PORT: 3306
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
 
   db:
-    image: postgres:17-alpine
+    image: mysql:8
     ports:
-      - "5432:5432"
+      - "3308:3306"
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASS}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASS}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS}
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${DB_USER}", "-p${DB_PASS}"]
       interval: 2s
-      retries: 10
+      retries: 15
+
+  pma:
+    image: phpmyadmin
+    ports:
+      - "8083:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
-  pg_data:
+  mysql_data:
