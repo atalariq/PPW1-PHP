@@ -1,4 +1,5 @@
 <?php
+session_start();
 $pageTitle = 'Konversi Nilai';
 
 $result = null;

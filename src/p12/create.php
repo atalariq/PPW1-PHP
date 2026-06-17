@@ -6,13 +6,10 @@ require_once __DIR__ . '/../shared/csrf.php';
 $pageTitle = 'Tambah Mahasiswa';
 $errors  = [];
 $input   = ['nama' => '', 'nim' => '', 'prodi_id' => '', 'ipk' => '', 'semester' => ''];
-$saved   = false;
-$predikat = '';
 
 $db = getDB();
 $prodi = $db->query('SELECT id, nama FROM prodi ORDER BY nama')->fetchAll();
 $validProdiIds = array_column($prodi, 'id');
-$prodiMap = array_column($prodi, 'nama', 'id');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_verify();
@@ -23,9 +20,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $input['ipk']      = is_string($_POST['ipk'] ?? null)      ? trim($_POST['ipk'])      : '';
     $input['semester'] = is_string($_POST['semester'] ?? null) ? trim($_POST['semester']) : '';
 
-    if ($input['nama'] === '') $errors['nama'] = 'Nama wajib diisi.';
+    if ($input['nama'] === '') {
+        $errors['nama'] = 'Nama wajib diisi.';
+    } elseif (strlen($input['nama']) > 100) {
+        $errors['nama'] = 'Nama maksimal 100 karakter.';
+    }
     if ($input['nim'] === '') {
         $errors['nim'] = 'NIM wajib diisi.';
+    } elseif (strlen($input['nim']) > 20) {
+        $errors['nim'] = 'NIM maksimal 20 karakter.';
     } else {
         $chk = $db->prepare('SELECT id FROM mahasiswa WHERE nim = ?');
         $chk->execute([$input['nim']]);
@@ -33,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($input['prodi_id'] === '') {
         $errors['prodi_id'] = 'Prodi wajib dipilih.';
-    } elseif (!in_array($input['prodi_id'], $validProdiIds)) {
+    } elseif (!ctype_digit($input['prodi_id']) || !in_array($input['prodi_id'], $validProdiIds)) {
         $errors['prodi_id'] = 'Prodi tidak valid.';
     }
     if ($input['ipk'] === '') {
@@ -48,17 +51,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        $stmt = $db->prepare(
-            'INSERT INTO mahasiswa (nama, nim, prodi_id, ipk, semester) VALUES (?, ?, ?, ?, ?)'
-        );
-        $stmt->execute([
-            $input['nama'],
-            $input['nim'],
-            (int)$input['prodi_id'],
-            (float)$input['ipk'],
-            (int)$input['semester'],
-        ]);
-
         $ipk = (float)$input['ipk'];
         if ($ipk >= 3.51)      $predikat = 'Cumlaude';
         elseif ($ipk >= 3.01)  $predikat = 'Sangat Memuaskan';
@@ -66,62 +58,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         elseif ($ipk >= 2.00)  $predikat = 'Cukup';
         else                   $predikat = 'Tidak Lulus';
 
-        $saved = true;
+        try {
+            $stmt = $db->prepare(
+                'INSERT INTO mahasiswa (nama, nim, prodi_id, ipk, semester) VALUES (?, ?, ?, ?, ?)'
+            );
+            $stmt->execute([
+                $input['nama'],
+                $input['nim'],
+                (int)$input['prodi_id'],
+                (float)$input['ipk'],
+                (int)$input['semester'],
+            ]);
+            $_SESSION['flash'] = [
+                'type' => 'success',
+                'msg'  => 'Data mahasiswa berhasil disimpan. Predikat IPK: ' . $predikat . '.',
+            ];
+            header('Location: index.php');
+            exit;
+        } catch (PDOException $e) {
+            if ($e->getCode() === '23000') {
+                $errors['nim'] = 'NIM sudah terdaftar (terdeteksi saat penyimpanan).';
+            } else {
+                throw $e;
+            }
+        }
     }
 }
 
 require_once __DIR__ . '/layout/header.php';
 ?>
 
-<?php if ($saved): ?>
-
-  <div class="row justify-content-center">
-    <div class="col-md-7">
-      <div class="alert alert-success d-flex align-items-center gap-2">
-        <i class="bi bi-check-circle-fill fs-5"></i>
-        <span>Data mahasiswa berhasil disimpan.</span>
-      </div>
-      <div class="card shadow-sm">
-        <div class="card-header fw-semibold bg-white">Ringkasan Data</div>
-        <div class="card-body p-0">
-          <table class="table mb-0">
-            <tr><th class="ps-3 w-25">Nama</th><td><?= htmlspecialchars($input['nama']) ?></td></tr>
-            <tr><th class="ps-3">NIM</th><td><code><?= htmlspecialchars($input['nim']) ?></code></td></tr>
-            <tr><th class="ps-3">Program Studi</th><td><?= htmlspecialchars($prodiMap[$input['prodi_id']] ?? '-') ?></td></tr>
-            <tr><th class="ps-3">IPK</th><td><?= number_format((float)$input['ipk'], 2) ?></td></tr>
-            <tr><th class="ps-3">Semester</th><td><?= htmlspecialchars($input['semester']) ?></td></tr>
-            <tr>
-              <th class="ps-3">Predikat</th>
-              <td>
-                <?php
-                  $badgeClass = match($predikat) {
-                      'Cumlaude'         => 'bg-warning text-dark',
-                      'Sangat Memuaskan' => 'bg-success',
-                      'Memuaskan'        => 'bg-primary',
-                      'Cukup'            => 'bg-secondary',
-                      default            => 'bg-danger',
-                  };
-                ?>
-                <span class="badge <?= $badgeClass ?> fs-6"><?= htmlspecialchars($predikat) ?></span>
-              </td>
-            </tr>
-          </table>
-        </div>
-        <div class="card-footer bg-white d-flex gap-2">
-          <a href="create.php" class="btn btn-primary">
-            <i class="bi bi-plus-lg me-1"></i>Tambah Lagi
-          </a>
-          <a href="index.php" class="btn btn-outline-secondary">
-            <i class="bi bi-list-ul me-1"></i>Lihat Semua
-          </a>
-        </div>
-      </div>
-    </div>
-  </div>
-
-<?php else: ?>
-
-  <div class="row justify-content-center">
+<div class="row justify-content-center">
     <div class="col-md-7">
       <div class="card shadow-sm">
         <div class="card-header bg-white py-3">
@@ -197,7 +164,5 @@ require_once __DIR__ . '/layout/header.php';
       </div>
     </div>
   </div>
-
-<?php endif; ?>
 
 <?php require_once __DIR__ . '/layout/footer.php'; ?>

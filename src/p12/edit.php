@@ -40,9 +40,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $input['ipk']      = is_string($_POST['ipk'] ?? null)      ? trim($_POST['ipk'])      : '';
     $input['semester'] = is_string($_POST['semester'] ?? null) ? trim($_POST['semester']) : '';
 
-    if ($input['nama'] === '') $errors['nama'] = 'Nama wajib diisi.';
+    if ($input['nama'] === '') {
+        $errors['nama'] = 'Nama wajib diisi.';
+    } elseif (strlen($input['nama']) > 100) {
+        $errors['nama'] = 'Nama maksimal 100 karakter.';
+    }
     if ($input['nim'] === '') {
         $errors['nim'] = 'NIM wajib diisi.';
+    } elseif (strlen($input['nim']) > 20) {
+        $errors['nim'] = 'NIM maksimal 20 karakter.';
     } else {
         $chk = $db->prepare('SELECT id FROM mahasiswa WHERE nim = ? AND id != ?');
         $chk->execute([$input['nim'], $id]);
@@ -50,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($input['prodi_id'] === '') {
         $errors['prodi_id'] = 'Prodi wajib dipilih.';
-    } elseif (!in_array($input['prodi_id'], $validProdiIds)) {
+    } elseif (!ctype_digit($input['prodi_id']) || !in_array($input['prodi_id'], $validProdiIds)) {
         $errors['prodi_id'] = 'Prodi tidak valid.';
     }
     if ($input['ipk'] === '') {
@@ -65,20 +71,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        $upd = $db->prepare(
-            'UPDATE mahasiswa SET nama=?, nim=?, prodi_id=?, ipk=?, semester=? WHERE id=?'
-        );
-        $upd->execute([
-            $input['nama'],
-            $input['nim'],
-            (int)$input['prodi_id'],
-            (float)$input['ipk'],
-            (int)$input['semester'],
-            $id,
-        ]);
-        $_SESSION['flash'] = ['type' => 'success', 'msg' => 'Data mahasiswa berhasil diperbarui.'];
-        header('Location: index.php');
-        exit;
+        try {
+            $upd = $db->prepare(
+                'UPDATE mahasiswa SET nama=?, nim=?, prodi_id=?, ipk=?, semester=? WHERE id=?'
+            );
+            $upd->execute([
+                $input['nama'],
+                $input['nim'],
+                (int)$input['prodi_id'],
+                (float)$input['ipk'],
+                (int)$input['semester'],
+                $id,
+            ]);
+            $_SESSION['flash'] = ['type' => 'success', 'msg' => 'Data mahasiswa berhasil diperbarui.'];
+            header('Location: index.php');
+            exit;
+        } catch (PDOException $e) {
+            if ($e->getCode() === '23000') {
+                $errors['nim'] = 'NIM sudah digunakan mahasiswa lain (terdeteksi saat penyimpanan).';
+            } else {
+                throw $e;
+            }
+        }
     }
 }
 

@@ -17,7 +17,7 @@ $stats = $db->query(
 $stmt = $db->query(
     'SELECT m.id, m.nama, m.nim, p.nama AS prodi, m.ipk, m.semester
      FROM mahasiswa m
-     JOIN prodi p ON p.id = m.prodi_id
+     LEFT JOIN prodi p ON p.id = m.prodi_id
      ORDER BY m.id DESC'
 );
 $rows = $stmt->fetchAll();
@@ -87,7 +87,7 @@ require_once __DIR__ . '/layout/header.php';
                 <td class="ps-3 text-muted"><?= $i + 1 ?></td>
                 <td class="fw-semibold"><?= htmlspecialchars($row['nama']) ?></td>
                 <td><code><?= htmlspecialchars($row['nim']) ?></code></td>
-                <td><?= htmlspecialchars($row['prodi']) ?></td>
+                <td><?= htmlspecialchars($row['prodi'] ?? 'Tidak diketahui') ?></td>
                 <td>
                   <span class="badge <?= (float)$row['ipk'] >= 3.0 ? 'bg-success' : ((float)$row['ipk'] >= 2.0 ? 'bg-warning text-dark' : 'bg-danger') ?>">
                     <?= number_format((float)$row['ipk'], 2) ?>
@@ -99,7 +99,7 @@ require_once __DIR__ . '/layout/header.php';
                     <i class="bi bi-pencil"></i>
                   </a>
                   <form method="POST" action="delete.php" class="d-inline"
-                        onsubmit="return confirm(<?= json_encode('Hapus mahasiswa ' . $row['nama'] . '?') ?>)">
+                        onsubmit="return confirm(<?= htmlspecialchars(json_encode('Hapus mahasiswa ' . $row['nama'] . '?'), ENT_QUOTES, 'UTF-8') ?>)">
                     <input type="hidden" name="id" value="<?= $row['id'] ?>">
                     <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                     <button type="submit" class="btn btn-sm btn-outline-danger">

@@ -15,7 +15,11 @@ if ($id) {
     $db = getDB();
     $stmt = $db->prepare('DELETE FROM mahasiswa WHERE id = ?');
     $stmt->execute([$id]);
-    $_SESSION['flash'] = ['type' => 'success', 'msg' => 'Mahasiswa berhasil dihapus.'];
+    if ($stmt->rowCount() > 0) {
+        $_SESSION['flash'] = ['type' => 'success', 'msg' => 'Mahasiswa berhasil dihapus.'];
+    } else {
+        $_SESSION['flash'] = ['type' => 'warning', 'msg' => 'Mahasiswa tidak ditemukan.'];
+    }
 }
 
 header('Location: index.php');
